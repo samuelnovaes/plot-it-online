@@ -1,11 +1,8 @@
-'use strict';
-
-var vm = new Vue({
+const vm = new Vue({
 	el: '#app',
 	data: {
 		aba: 0,
 		code: '',
-		data: [],
 		layout: {
 			dragmode: 'pan',
 			xaxis: {
@@ -20,86 +17,75 @@ var vm = new Vue({
 		empty: true,
 		editor: null
 	},
-	mounted: function mounted() {
-		var _this = this;
-
+	mounted() {
 		this.editor = ace.edit('editor', {
 			theme: 'ace/theme/chrome',
 			mode: 'ace/mode/javascript',
 			fontSize: '14pt',
 			showPrintMargin: false
 		});
-		this.editor.session.on('change', function () {
-			_this.code = _this.editor.getValue();
+		this.editor.session.on('change', () => {
+			this.code = this.editor.getValue();
 		});
-		window.onresize = function () {
-			if (!_this.empty) {
+		window.onresize = () => {
+			if (!this.empty) {
 				Plotly.relayout('plot', {
-					width: _this.$refs.plot.offsetWidth,
-					height: _this.$refs.plot.offsetHeight
+					width: this.$refs.plot.offsetWidth,
+					height: this.$refs.plot.offsetHeight
 				});
 			}
 		};
-		window.onkeydown = function (e) {
+		window.onkeydown = e => {
 			if (e.ctrlKey) {
-				if (e.key == 's' && _this.isEditor) {
-					_this.download();
+				if (e.key == 's' && this.isEditor) {
+					this.download();
 					e.preventDefault();
-				} else if (e.key == 'o' && _this.isEditor) {
-					_this.upload();
+				} else if (e.key == 'o' && this.isEditor) {
+					this.upload();
 					e.preventDefault();
-				} else if (e.key == 'Enter' && _this.aba == 1) {
-					_this.run();
+				} else if (e.key == 'Enter') {
+					this.run();
 					e.preventDefault();
 				} else if (e.key == '=') {
-					_this.$refs.editor.style.fontSize = _this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, function (m) {
-						return Math.round(m * 1.2);
-					});
+					this.$refs.editor.style.fontSize = this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, m => Math.round(m * 1.2));
 					e.preventDefault();
 				} else if (e.key == '-') {
-					_this.$refs.editor.style.fontSize = _this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, function (m) {
-						return Math.round(m / 1.2);
-					});
+					this.$refs.editor.style.fontSize = this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, m => Math.round(m / 1.2));
 					e.preventDefault();
 				} else if (e.key == '0') {
-					_this.$refs.editor.style.fontSize = '14pt';
+					this.$refs.editor.style.fontSize = '14pt';
 					e.preventDefault();
 				}
 			}
 		};
 	},
-
 	methods: {
-		run: function run() {
-			var _this2 = this;
-
+		run() {
+			const _data = [];
+			const plot = chart => {
+				_data.push(chart);
+			};
+			eval(`try{${this.code}}catch(e){console.error(e.stack)}`);
 			if (this.aba == 1) {
-				this.data = [];
-				var plot = function plot(chart) {
-					_this2.data.push(chart);
-				};
-				eval('try{' + this.code + '}catch(e){console.error(e.stack)}');
-				Plotly.newPlot('plot', this.data, this.layout, this.options);
+				Plotly.newPlot('plot', _data, this.layout, this.options);
 				this.empty = false;
 			}
 		},
-		download: function download() {
-			var a = document.createElement('a');
-			var file = new Blob([this.code], { type: 'text/plain' });
+		download() {
+			const a = document.createElement('a');
+			const file = new Blob([this.code], { type: 'text/plain' });
 			a.href = URL.createObjectURL(file);
 			a.download = 'plot-it.js';
 			a.click();
 		},
-		upload: function upload() {
-			var _this3 = this;
-
-			var input = document.createElement('input');
+		upload() {
+			const input = document.createElement('input');
 			input.type = 'file';
 
-			input.onchange = function () {
-				var reader = new FileReader();
-				reader.onload = function (e) {
-					_this3.editor.setValue(e.target.result);
+			input.onchange = () => {
+				const reader = new FileReader();
+				reader.onload = e => {
+					this.editor.setValue(e.target.result);
 				};
 				reader.readAsText(input.files[0]);
 			};
@@ -108,18 +94,16 @@ var vm = new Vue({
 		}
 	},
 	watch: {
-		aba: function aba(v) {
-			var _this4 = this;
-
+		aba(v) {
 			if (v == 1 && this.empty) {
-				setTimeout(function () {
-					Plotly.newPlot('plot', [], _this4.layout, _this4.options);
+				setTimeout(() => {
+					Plotly.newPlot('plot', [], this.layout, this.options);
 				});
 			}
 		}
 	},
 	computed: {
-		isEditor: function isEditor() {
+		isEditor() {
 			return this.aba == 0 && this.editor;
 		}
 	}

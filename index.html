@@ -36,8 +36,8 @@
 					</v-btn>
 					<span>Open file (Ctrl + O)</span>
 				</v-tooltip>
-				<v-tooltip top :disabled="aba != 1">
-					<v-btn :color="aba == 1 ? 'primary' : 'secondary'" :disabled="aba != 1" slot="activator" icon @click="run">
+				<v-tooltip top>
+					<v-btn color="primary" slot="activator" icon @click="run">
 						<v-icon>mdi-play</v-icon>
 					</v-btn>
 					<span>Run (Ctrl + Enter)</span>

@@ -3,7 +3,6 @@ const vm = new Vue({
 	data: {
 		aba: 0,
 		code: '',
-		data: [],
 		layout: {
 			dragmode: 'pan',
 			xaxis: {
@@ -46,7 +45,7 @@ const vm = new Vue({
 					this.upload()
 					e.preventDefault()
 				}
-				else if (e.key == 'Enter' && this.aba == 1) {
+				else if (e.key == 'Enter') {
 					this.run()
 					e.preventDefault()
 				}
@@ -67,13 +66,13 @@ const vm = new Vue({
 	},
 	methods: {
 		run() {
+			const _data = []
+			const plot = chart => {
+				_data.push(chart)
+			}
+			eval(`try{${this.code}}catch(e){console.error(e.stack)}`)
 			if (this.aba == 1) {
-				this.data = []
-				const plot = chart => {
-					this.data.push(chart)
-				}
-				eval(`try{${this.code}}catch(e){console.error(e.stack)}`)
-				Plotly.newPlot('plot', this.data, this.layout, this.options)
+				Plotly.newPlot('plot', _data, this.layout, this.options)
 				this.empty = false
 			}
 		},
