@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet">
+	<link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.materialdesignicons.com/2.8.94/css/materialdesignicons.min.css">
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="icon" href="img/logo.png" type="image/png">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+	<title>Plot It Online</title>
+</head>
+
+<body>
+	<div id="app">
+		<v-app dark>
+			<v-tabs fixed-tabs v-model="aba">
+				<v-tab>Code</v-tab>
+				<v-tab>Plot</v-tab>
+			</v-tabs>
+			<v-content>
+				<div id="editor" ref="editor" v-show="aba == 0"></div>
+				<div id="plot" ref="plot" v-show="aba == 1"></div>
+			</v-content>
+			<v-footer height="auto">
+				<v-spacer></v-spacer>
+				<v-tooltip top :disabled="!isEditor">
+					<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="download">
+						<v-icon>mdi-content-save</v-icon>
+					</v-btn>
+					<span>Save file (Ctrl + S)</span>
+				</v-tooltip>
+				<v-tooltip top :disabled="!isEditor">
+					<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="upload">
+						<v-icon>mdi-folder-open</v-icon>
+					</v-btn>
+					<span>Open file (Ctrl + O)</span>
+				</v-tooltip>
+				<v-tooltip top :disabled="aba != 1">
+					<v-btn :color="aba == 1 ? 'primary' : 'secondary'" :disabled="aba != 1" slot="activator" icon @click="run">
+						<v-icon>mdi-play</v-icon>
+					</v-btn>
+					<span>Run (Ctrl + Enter)</span>
+				</v-tooltip>
+				<v-spacer></v-spacer>
+			</v-footer>
+		</v-app>
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.1/ace.js"></script>
+	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+	<script src="https://unpkg.com/safe-range"></script>
+	<script src="js/build.js"></script>
+</body>
+
+</html>
