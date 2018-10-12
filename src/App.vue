@@ -2,24 +2,15 @@
 	<v-app dark>
 		<v-toolbar dense color="toolbar" dark tabs fixed app>
 			<v-spacer></v-spacer>
-			<v-tooltip bottom :disabled="!isEditor">
-				<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="download">
-					<v-icon>mdi-content-save</v-icon>
-				</v-btn>
-				<span>Save file (Ctrl + S)</span>
-			</v-tooltip>
-			<v-tooltip bottom :disabled="!isEditor">
-				<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="upload">
-					<v-icon>mdi-folder-open</v-icon>
-				</v-btn>
-				<span>Open file (Ctrl + O)</span>
-			</v-tooltip>
-			<v-tooltip bottom>
-				<v-btn color="primary" slot="activator" icon @click="run">
-					<v-icon>mdi-play</v-icon>
-				</v-btn>
-				<span>Run (Ctrl + Enter)</span>
-			</v-tooltip>
+			<v-btn icon :disabled="!isEditor" outline @click="download" title="Save (Ctrl + S)">
+				<v-icon>mdi-content-save</v-icon>
+			</v-btn>
+			<v-btn icon :disabled="!isEditor" outline @click="upload" title="Open (Ctrl + O)">
+				<v-icon>mdi-folder-open</v-icon>
+			</v-btn>
+			<v-btn icon outline @click="run" title="Run (Ctrl + Enter)">
+				<v-icon>mdi-play</v-icon>
+			</v-btn>
 			<v-spacer></v-spacer>
 			<v-tabs slot="extension" color="toolbar" fixed-tabs v-model="aba">
 				<v-tab>Code</v-tab>
@@ -39,8 +30,8 @@
 			<div id="plot" ref="plot" v-show="aba == 2"></div>
 		</v-content>
 		<v-snackbar v-model="snackbar" color="error">
-			An error has occurred!
-			<v-btn dark @click="seeLogs">See logs</v-btn>
+			An error has occurred
+			<v-btn flat dark @click="seeLogs">See logs</v-btn>
 		</v-snackbar>
 		<a id="download" ref="download"></a>
 	</v-app>
@@ -130,10 +121,9 @@ export default {
 			}
 		}
 		window.onerror = (err, file, line) => {
-			console.error(`<strong>(Line ${line}</strong>) ${err}`)
+			console.error(`File <u>${file}</u>, Line <strong>${line}</strong><br>${err}`)
 			this.snackbar = true
 		}
-
 		const log = (args, type) => {
 			this.logs.push({
 				text: args.map(arg => typeof arg == 'string' ? arg : JSON.stringify(arg)).join(' '),
