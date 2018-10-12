@@ -1,46 +1,64 @@
 <template>
 	<v-app dark>
-		<v-tabs fixed-tabs v-model="aba">
-			<v-tab>Code</v-tab>
-			<v-tab>Plot</v-tab>
-		</v-tabs>
-		<v-content>
-			<div id="editor" ref="editor" v-show="aba == 0"></div>
-			<div id="plot" ref="plot" v-show="aba == 1"></div>
-		</v-content>
-		<v-footer height="auto">
+		<v-toolbar dense color="toolbar" dark tabs fixed app>
 			<v-spacer></v-spacer>
-			<v-tooltip top :disabled="!isEditor">
+			<v-tooltip bottom :disabled="!isEditor">
 				<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="download">
 					<v-icon>mdi-content-save</v-icon>
 				</v-btn>
 				<span>Save file (Ctrl + S)</span>
 			</v-tooltip>
-			<v-tooltip top :disabled="!isEditor">
+			<v-tooltip bottom :disabled="!isEditor">
 				<v-btn :color="isEditor ? 'primary' : 'secondary'" :disabled="!isEditor" slot="activator" icon @click="upload">
 					<v-icon>mdi-folder-open</v-icon>
 				</v-btn>
 				<span>Open file (Ctrl + O)</span>
 			</v-tooltip>
-			<v-tooltip top>
+			<v-tooltip bottom>
 				<v-btn color="primary" slot="activator" icon @click="run">
 					<v-icon>mdi-play</v-icon>
 				</v-btn>
 				<span>Run (Ctrl + Enter)</span>
 			</v-tooltip>
 			<v-spacer></v-spacer>
-		</v-footer>
+			<v-tabs slot="extension" color="toolbar" fixed-tabs v-model="aba">
+				<v-tab>Code</v-tab>
+				<v-tab>Logs</v-tab>
+				<v-tab>Plot</v-tab>
+			</v-tabs>
+		</v-toolbar>
+		<v-content>
+			<div id="editor" ref="editor" v-show="aba == 0"></div>
+			<div v-show="aba == 1">
+				<v-container>
+					<v-alert :value="true" v-for="(log, i) in logs" :key="i" :type="log.type">
+						<pre v-html="log.text"></pre>
+					</v-alert>
+				</v-container>
+			</div>
+			<div id="plot" ref="plot" v-show="aba == 2"></div>
+		</v-content>
+		<v-snackbar v-model="snackbar" color="error">
+			An error has occurred!
+			<v-btn dark @click="seeLogs">See logs</v-btn>
+		</v-snackbar>
+		<a id="download" ref="download"></a>
 	</v-app>
 </template>
 
 <style scoped>
-#editor,
-#plot {
-  width: 100%;
-  height: 100%;
+#editor, #plot {
+	width: 100%;
+	height: 100%;
+}
+#download {
+	display: none;
+}
+pre {
+	word-break: break-all;
+	white-space: normal;
 }
 </style>
-
 
 <script>
 export default {
@@ -48,6 +66,9 @@ export default {
 		return {
 			aba: 0,
 			code: '',
+			data: [],
+			logs: [],
+			snackbar: false,
 			layout: {
 				dragmode: 'pan',
 				xaxis: {
@@ -65,20 +86,19 @@ export default {
 	},
 	mounted() {
 		this.editor = ace.edit('editor', {
-			theme: 'ace/theme/chrome',
+			theme: 'ace/theme/monokai',
 			mode: 'ace/mode/javascript',
 			fontSize: '14pt',
-			showPrintMargin: false
+			showPrintMargin: false,
+			tabSize: 4,
+			useSoftTabs: false
 		})
 		this.editor.session.on('change', () => {
 			this.code = this.editor.getValue()
 		})
 		window.onresize = () => {
-			if (!this.empty) {
-				Plotly.relayout('plot', {
-					width: this.$refs.plot.offsetWidth,
-					height: this.$refs.plot.offsetHeight
-				})
+			if (this.aba == 2) {
+				Plotly.newPlot('plot', this.data, this.layout, this.options)
 			}
 		}
 		window.onkeydown = e => {
@@ -95,60 +115,90 @@ export default {
 					this.run()
 					e.preventDefault()
 				}
-				else if (e.key == '=') {
+				else if (e.key == '=' && this.isEditor) {
 					this.$refs.editor.style.fontSize = this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, m => Math.round(m * 1.2))
 					e.preventDefault()
 				}
-				else if (e.key == '-') {
+				else if (e.key == '-' && this.isEditor) {
 					this.$refs.editor.style.fontSize = this.$refs.editor.style.fontSize.replace(/^([\d.]+)/, m => Math.round(m / 1.2))
 					e.preventDefault()
 				}
-				else if (e.key == '0') {
+				else if (e.key == '0' && this.isEditor) {
 					this.$refs.editor.style.fontSize = '14pt'
 					e.preventDefault()
 				}
 			}
 		}
+		window.onerror = (err, file, line) => {
+			console.error(`<strong>(Line ${line}</strong>) ${err}`)
+			this.snackbar = true
+		}
+
+		const log = (args, type) => {
+			this.logs.push({
+				text: args.map(arg => typeof arg == 'string' ? arg : JSON.stringify(arg)).join(' '),
+				type
+			})
+		}
+		console.log = (...args) => log(args, 'success')
+		console.warn = (...args) => log(args, 'warning')
+		console.info = (...args) => log(args, 'info')
+		console.error = (...args) => log(args, 'error')
 	},
 	methods: {
 		run() {
-			const _data = []
+			this.logs = []
+			this.data = []
 			const plot = chart => {
-				_data.push(chart)
+				this.data.push(chart)
 			}
-			eval(`try{${this.code}}catch(e){console.error(e.stack)}`)
-			if (this.aba == 1) {
-				Plotly.newPlot('plot', _data, this.layout, this.options)
-				this.empty = false
+			const range = (...args) => math.map(math.range(...args.map(x => math.bignumber(x))), x => math.number(x)).toArray()
+			const file = new Blob([`window.run = function(plot, range){${this.code}};`], { type: 'application/javascript' })
+			const url = URL.createObjectURL(file)
+			const script = document.createElement('script')
+			script.src = url
+			document.body.appendChild(script)
+			URL.revokeObjectURL(url)
+			script.onload = () => {
+				run(plot, range)
+				if (this.aba == 2) {
+					Plotly.newPlot('plot', this.data, this.layout, this.options)
+					this.empty = false
+				}
+				document.body.removeChild(script)
 			}
 		},
 		download() {
-			const a = document.createElement('a')
-			const file = new Blob([this.code], { type: 'text/plain' })
-			a.href = URL.createObjectURL(file)
+			const a = this.$refs.download
+			const file = new Blob([this.code], { type: 'octet/stream' })
+			const url = URL.createObjectURL(file)
+			a.href = url
 			a.download = 'plot-it.js'
 			a.click()
+			URL.revokeObjectURL(url)
 		},
 		upload() {
 			const input = document.createElement('input')
 			input.type = 'file'
-
 			input.onchange = () => {
 				const reader = new FileReader()
 				reader.onload = e => {
-					this.editor.setValue(e.target.result)
+					this.editor.setValue(e.target.result, 1)
 				}
 				reader.readAsText(input.files[0])
 			}
-
 			input.click()
+		},
+		seeLogs() {
+			this.snackbar = false
+			this.aba = 1
 		}
 	},
 	watch: {
 		aba(v) {
-			if (v == 1 && this.empty) {
-				setTimeout(() => {
-					Plotly.newPlot('plot', [], this.layout, this.options)
+			if (v == 2) {
+				this.$nextTick(() => {
+					Plotly.newPlot('plot', this.data, this.layout, this.options)
 				})
 			}
 		}
