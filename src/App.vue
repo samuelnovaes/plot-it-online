@@ -8,13 +8,21 @@
 			<v-btn icon :disabled="!isEditor" outline @click="upload" title="Open (Ctrl + O)">
 				<v-icon>mdi-folder-open</v-icon>
 			</v-btn>
+			<v-btn icon :disabled="aba != 1" outline @click="logs = []" title="Clear Logs (Ctrl + L)">
+				<v-icon>mdi-notification-clear-all</v-icon>
+			</v-btn>
 			<v-btn icon outline @click="run" title="Run (Ctrl + Enter)">
 				<v-icon>mdi-play</v-icon>
 			</v-btn>
 			<v-spacer></v-spacer>
 			<v-tabs slot="extension" color="toolbar" fixed-tabs v-model="aba">
 				<v-tab>Code</v-tab>
-				<v-tab>Logs</v-tab>
+				<v-tab>
+					<v-badge :value="logs.length" color="red">
+						<span>Logs</span>
+						<span slot="badge">{{logs.length >= 100 ? '99+' : logs.length}}</span>
+					</v-badge>
+				</v-tab>
 				<v-tab>Plot</v-tab>
 			</v-tabs>
 		</v-toolbar>
@@ -30,8 +38,10 @@
 			<div id="plot" ref="plot" v-show="aba == 2"></div>
 		</v-content>
 		<v-snackbar v-model="snackbar" color="error">
-			An error has occurred
-			<v-btn flat dark @click="seeLogs">See logs</v-btn>
+			There are errors in your code. Fix them!
+			<v-btn icon @click="snackbar = false">
+				<v-icon>close</v-icon>
+			</v-btn>
 		</v-snackbar>
 		<a id="download" ref="download"></a>
 	</v-app>
@@ -59,6 +69,7 @@ export default {
 			code: '',
 			data: [],
 			logs: [],
+			annotations: [],
 			snackbar: false,
 			layout: {
 				dragmode: 'pan',
@@ -86,6 +97,9 @@ export default {
 		})
 		this.editor.session.on('change', () => {
 			this.code = this.editor.getValue()
+		})
+		this.editor.session.on('changeAnnotation', () => {
+			this.annotations = this.editor.getSession().getAnnotations()
 		})
 		window.onresize = () => {
 			if (this.aba == 2) {
@@ -118,11 +132,14 @@ export default {
 					this.$refs.editor.style.fontSize = '14pt'
 					e.preventDefault()
 				}
+				else if (e.key == 'l' && this.aba == 1) {
+					this.logs = []
+					e.preventDefault()
+				}
 			}
 		}
 		window.onerror = (err, file, line) => {
 			console.error(`File <u>${file}</u>, Line <strong>${line}</strong><br>${err}`)
-			this.snackbar = true
 		}
 		const log = (args, type) => {
 			this.logs.push({
@@ -139,23 +156,29 @@ export default {
 		run() {
 			this.logs = []
 			this.data = []
+			const range = (...args) => math.map(math.range(...args.map(x => math.bignumber(x))), x => math.number(x)).toArray()
 			const plot = chart => {
 				this.data.push(chart)
 			}
-			const range = (...args) => math.map(math.range(...args.map(x => math.bignumber(x))), x => math.number(x)).toArray()
-			const file = new Blob([`window.run = function(plot, range){${this.code}};`], { type: 'application/javascript' })
-			const url = URL.createObjectURL(file)
-			const script = document.createElement('script')
-			script.src = url
-			document.body.appendChild(script)
-			URL.revokeObjectURL(url)
-			script.onload = () => {
-				run(plot, range)
-				if (this.aba == 2) {
-					Plotly.newPlot('plot', this.data, this.layout, this.options)
-					this.empty = false
+			if (!this.annotations.find(annotation => annotation.type == 'error')) {
+				const file = new Blob([`window.run = function(plot, range){${this.code}};`], { type: 'application/javascript' })
+				const url = URL.createObjectURL(file)
+				const script = document.createElement('script')
+				script.src = url
+				document.body.appendChild(script)
+				URL.revokeObjectURL(url)
+				script.onload = () => {
+					run(plot, range)
+					if (this.aba == 2) {
+						Plotly.newPlot('plot', this.data, this.layout, this.options)
+						this.empty = false
+					}
+					document.body.removeChild(script)
 				}
-				document.body.removeChild(script)
+			}
+			else {
+				this.aba = 0
+				this.snackbar = true
 			}
 		},
 		download() {
@@ -178,10 +201,6 @@ export default {
 				reader.readAsText(input.files[0])
 			}
 			input.click()
-		},
-		seeLogs() {
-			this.snackbar = false
-			this.aba = 1
 		}
 	},
 	watch: {
